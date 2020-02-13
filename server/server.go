@@ -21,6 +21,7 @@ import (
 type Options struct {
 	DB           *db.DB
 	MusicPath    string
+	CachePath    string
 	ListenAddr   string
 	ScanInterval time.Duration
 	ProxyPrefix  string
@@ -35,9 +36,11 @@ type Server struct {
 
 func New(opts Options) *Server {
 	opts.MusicPath = filepath.Clean(opts.MusicPath)
+	opts.CachePath = filepath.Clean(opts.CachePath)
 	base := &ctrlbase.Controller{
 		DB:          opts.DB,
 		MusicPath:   opts.MusicPath,
+		CachePath:   opts.CachePath,
 		Scanner:     scanner.New(opts.DB, opts.MusicPath),
 		ProxyPrefix: opts.ProxyPrefix,
 	}
