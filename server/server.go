@@ -145,7 +145,7 @@ func (s *Server) SetupSubsonic() error {
 	rout.Handle("/deletePlaylist{_:(?:\\.view)?}", ctrl.H(ctrl.ServeDeletePlaylist))
 	//
 	// begin raw
-	rout.Handle("/download{_:(?:\\.view)?}", ctrl.HR(ctrl.ServeStream))
+	rout.Handle("/download{_:(?:\\.view)?}", ctrl.HR(ctrl.ServeDownload))
 	rout.Handle("/getCoverArt{_:(?:\\.view)?}", ctrl.HR(ctrl.ServeGetCoverArt))
 	rout.Handle("/stream{_:(?:\\.view)?}", ctrl.HR(ctrl.ServeStream))
 	//
