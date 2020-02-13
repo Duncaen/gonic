@@ -68,7 +68,9 @@ func (c *Controller) ServeStream(w http.ResponseWriter, r *http.Request) *spec.R
 		track.Album.RightPath,
 		track.Filename,
 	)
-	http.ServeFile(w, r, absPath)
+	// http.ServeFile(w, r, absPath)
+	StreamTrack(w, r, absPath, client, c.CachePath)
+
 	//
 	// after we've served the file, mark the album as played
 	user := r.Context().Value(CtxUser).(*model.User)
