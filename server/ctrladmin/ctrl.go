@@ -3,11 +3,11 @@ package ctrladmin
 import (
 	"encoding/gob"
 	"fmt"
-	"strings"
 	"html/template"
 	"log"
 	"net/http"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Masterminds/sprig"
