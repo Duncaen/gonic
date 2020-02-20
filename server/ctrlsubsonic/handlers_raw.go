@@ -1,16 +1,39 @@
 package ctrlsubsonic
 
 import (
+	"log"
 	"net/http"
+	"os"
 	"path"
 	"time"
 
 	"github.com/jinzhu/gorm"
 
 	"senan.xyz/g/gonic/model"
+	"senan.xyz/g/gonic/server/ctrlsubsonic/encode"
 	"senan.xyz/g/gonic/server/ctrlsubsonic/params"
 	"senan.xyz/g/gonic/server/ctrlsubsonic/spec"
 )
+
+// Put special clients that can't handle Opus here:
+func encodeProfileFor(client string) string {
+	switch client {
+	case "Soundwaves":
+		return "mp3_rg"
+	case "Jamstash":
+		return "opus_rg"
+	default:
+		return "opus"
+	}
+}
+
+func fileExists(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		return false
+	}
+	return !info.IsDir()
+}
 
 // "raw" handlers are ones that don't always return a spec response.
 // it could be a file, stream, etc. so you must either
@@ -59,31 +82,38 @@ func (c *Controller) ServeStream(w http.ResponseWriter, r *http.Request) *spec.R
 	if gorm.IsRecordNotFoundError(err) {
 		return spec.NewError(70, "media with id `%d` was not found", id)
 	}
-
+	defer func() {
+		user := r.Context().Value(CtxUser).(*model.User)
+		play := model.Play{
+			AlbumID: track.Album.ID,
+			UserID:  user.ID,
+		}
+		c.DB.
+			Where(play).
+			First(&play)
+		play.Time = time.Now() // for getAlbumList?type=recent
+		play.Count++           // for getAlbumList?type=frequent
+		c.DB.Save(&play)
+	}()
 	client := params.GetOr("c", "generic")
-
 	absPath := path.Join(
 		c.MusicPath,
 		track.Album.LeftPath,
 		track.Album.RightPath,
 		track.Filename,
 	)
-	// http.ServeFile(w, r, absPath)
-	StreamTrack(w, r, absPath, client, c.CachePath)
-
-	//
-	// after we've served the file, mark the album as played
-	user := r.Context().Value(CtxUser).(*model.User)
-	play := model.Play{
-		AlbumID: track.Album.ID,
-		UserID:  user.ID,
+	profileName := encodeProfileFor(client)
+	profile := encode.Profiles[profileName]
+	cacheKey := encode.CacheKey(absPath, profileName)
+	cacheFile := path.Join(c.CachePath, cacheKey)
+	if fileExists(cacheFile) {
+		log.Printf("cache [%s/%s] hit!\n", profile.Format, profile.Bitrate)
+		http.ServeFile(w, r, cacheFile)
+		return
 	}
-	c.DB.
-		Where(play).
-		First(&play)
-	play.Time = time.Now() // for getAlbumList?type=recent
-	play.Count++           // for getAlbumList?type=frequent
-	c.DB.Save(&play)
+	if err := encode.Encode(w, absPath, cacheFile, profile); err != nil {
+		log.Printf("cache [%s/%s] miss!\n", profile.Format, profile.Bitrate)
+	}
 	return nil
 }
 
