@@ -109,11 +109,14 @@ func (c *Controller) ServeStream(w http.ResponseWriter, r *http.Request) *spec.R
 	if fileExists(cacheFile) {
 		log.Printf("cache [%s/%s] hit!\n", profile.Format, profile.Bitrate)
 		http.ServeFile(w, r, cacheFile)
-		return
+		return nil
 	}
+	log.Printf("cache [%s/%s] miss!\n", profile.Format, profile.Bitrate)
 	if err := encode.Encode(w, absPath, cacheFile, profile); err != nil {
-		log.Printf("cache [%s/%s] miss!\n", profile.Format, profile.Bitrate)
+		log.Printf("error encoding %q: %v\n", absPath, err)
 	}
+	log.Printf("track `%s` encoded to [%s/%s] successfully\n",
+		track.Filename, profile.Format, profile.Bitrate)
 	return nil
 }
 
